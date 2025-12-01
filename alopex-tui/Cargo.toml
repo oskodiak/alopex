@@ -1,0 +1,28 @@
+[package]
+name = "alopex-tui"
+version = "0.1.0"
+edition = "2021"
+description = "ALOPEX Network Management TUI"
+authors = ["Onyx Digital Intelligence Development LLC"]
+license = "MIT"
+
+[[bin]]
+name = "alopex"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace dependencies
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+clap = { workspace = true }
+chrono = { workspace = true }
+
+# TUI utilities
+tui-input = "0.10"
+
+# No longer needed - using real data
