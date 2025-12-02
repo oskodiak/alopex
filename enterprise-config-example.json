@@ -1,0 +1,51 @@
+{
+  "enterprise": {
+    "organization": "Onyx Digital Intelligence Development LLC",
+    "deployment_id": "enterprise-001",
+    "policy_version": "1.0",
+    "contact": "enterprise@onyxdigital.dev"
+  },
+  "auto_connect": true,
+  "preferred_networks": [
+    "CorpNetwork-5G",
+    "CorpNetwork-Guest",
+    "CorpNetwork-Secure"
+  ],
+  "enterprise_policies": {
+    "require_encryption": true,
+    "minimum_security": "WPA2",
+    "allow_adhoc": false,
+    "certificate_validation": "strict",
+    "vpn_required_domains": [
+      "*.internal.corp.com",
+      "*.confidential.corp.com"
+    ],
+    "blocked_networks": [
+      "FreeWiFi",
+      "xfinitywifi"
+    ]
+  },
+  "monitoring": {
+    "telemetry_enabled": true,
+    "syslog_integration": true,
+    "metrics_port": 9090,
+    "prometheus_endpoint": "/metrics",
+    "enterprise_dashboard": "https://netmon.onyxdigital.dev/api/v1/telemetry",
+    "alert_webhook": "https://alerts.onyxdigital.dev/alopex",
+    "audit_logging": true
+  },
+  "security": {
+    "certificate_pinning": true,
+    "enterprise_ca": "/etc/alopex/certs/enterprise-ca.pem",
+    "client_certificate": "/etc/alopex/certs/client.pem",
+    "private_key": "/etc/alopex/certs/client-key.pem",
+    "network_isolation": true,
+    "threat_detection": true
+  },
+  "licensing": {
+    "license_key": "ALOPEX-ENTERPRISE-XXXXXX-XXXXXX-XXXXXX",
+    "license_server": "https://licensing.onyxdigital.dev/api/v1/validate",
+    "support_level": "enterprise",
+    "support_contact": "enterprise@onyxdigital.dev"
+  }
+}

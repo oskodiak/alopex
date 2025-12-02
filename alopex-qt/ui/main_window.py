@@ -15,7 +15,7 @@ from .interface_panel import InterfacePanel
 from .management_panel import ManagementPanel  
 from .telemetry_panel import TelemetryPanel
 from .system_tray import AlopexSystemTray
-from ..network.discovery import NetworkDiscovery
+from network.discovery import NetworkDiscovery
 
 class AlopexMainWindow(QMainWindow):
     """Main application window"""

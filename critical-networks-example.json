@@ -1,0 +1,36 @@
+[
+  {
+    "name": "Primary Ethernet",
+    "interface": "eno1", 
+    "method": "dhcp",
+    "priority": 100,
+    "required": true,
+    "timeout": 30,
+    "description": "Primary corporate network connection"
+  },
+  {
+    "name": "Backup Static Network",
+    "interface": "eno2",
+    "method": "static",
+    "ip": "192.168.100.10",
+    "netmask": "255.255.255.0",
+    "gateway": "192.168.100.1",
+    "dns": ["8.8.8.8", "1.1.1.1"],
+    "priority": 50,
+    "required": false,
+    "description": "Backup network with static configuration"
+  },
+  {
+    "name": "Management Network",
+    "interface": "eno3",
+    "method": "static", 
+    "ip": "10.0.0.100",
+    "netmask": "255.255.255.0",
+    "gateway": "10.0.0.1",
+    "dns": ["10.0.0.1"],
+    "priority": 25,
+    "required": false,
+    "management_only": true,
+    "description": "Isolated management network for enterprise monitoring"
+  }
+]

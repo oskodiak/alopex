@@ -9,13 +9,13 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, 
     QGridLayout, QProgressBar, QGroupBox
 )
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, pyqtProperty
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, pyqtProperty, QPointF
 from PyQt6.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QLinearGradient, 
-    QRadialGradient, QPainterPath, QPolygonF, QPointF
+    QRadialGradient, QPainterPath, QPolygonF
 )
 
-from ..network.discovery import NetworkMetrics
+from network.discovery import NetworkMetrics
 
 class AnimatedProgressBar(QProgressBar):
     """Beautiful animated progress bar with glow effects"""
@@ -305,7 +305,7 @@ class StatusIndicator(QWidget):
             pulse_intensity = (math.sin(self.pulse_value) + 1) / 2
             glow_radius = radius + int(4 * pulse_intensity)
             
-            glow_gradient = QRadialGradient(center, glow_radius)
+            glow_gradient = QRadialGradient(QPointF(center), glow_radius)
             glow_color = QColor(color)
             glow_color.setAlpha(int(100 * pulse_intensity))
             glow_gradient.setColorAt(0, glow_color)
@@ -313,12 +313,14 @@ class StatusIndicator(QWidget):
             
             painter.setBrush(QBrush(glow_gradient))
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawEllipse(center, glow_radius, glow_radius)
+            painter.drawEllipse(center.x() - glow_radius, center.y() - glow_radius, 
+                               glow_radius * 2, glow_radius * 2)
         
         # Main circle
         painter.setBrush(QBrush(color))
         painter.setPen(QPen(color.lighter(130), 1))
-        painter.drawEllipse(center, radius, radius)
+        painter.drawEllipse(center.x() - radius, center.y() - radius, 
+                           radius * 2, radius * 2)
 
 class TelemetryPanel(QWidget):
     """Revolutionary telemetry panel that makes NetworkManager obsolete"""

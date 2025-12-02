@@ -127,35 +127,83 @@ class WiFiManager:
     
     @staticmethod
     async def connect_to_network(interface: str, ssid: str, password: str = None) -> bool:
-        """Connect to WiFi network (simplified - would need proper implementation)"""
+        """Connect to WiFi network with proper WPA/WPA2 authentication"""
+        import tempfile
+        import asyncio
+        
         try:
+            # Kill any existing wpa_supplicant on this interface
+            subprocess.run(['sudo', 'pkill', '-f', f'wpa_supplicant.*{interface}'], 
+                         capture_output=True)
+            
+            # Bring interface up
+            subprocess.run(['sudo', 'ip', 'link', 'set', interface, 'up'], 
+                         capture_output=True)
+            
             if password:
-                # For WPA networks - this is simplified
-                # Real implementation would use wpa_supplicant or iwd
-                cmd = [
-                    'sudo', 'wpa_supplicant', 
-                    '-B', '-i', interface,
-                    '-c', f'/tmp/wpa_{ssid}.conf'
-                ]
-                
-                # Create temporary config
-                config = f'''
+                # Create proper wpa_supplicant configuration
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.conf', delete=False) as f:
+                    config = f'''ctrl_interface=/var/run/wpa_supplicant
+update_config=1
+country=US
+
 network={{
     ssid="{ssid}"
     psk="{password}"
+    key_mgmt=WPA-PSK
+    proto=RSN WPA
+    pairwise=CCMP TKIP
+    group=CCMP TKIP
 }}
 '''
-                with open(f'/tmp/wpa_{ssid}.conf', 'w') as f:
                     f.write(config)
+                    config_path = f.name
                 
-                result = subprocess.run(cmd, capture_output=True)
-                return result.returncode == 0
+                # Start wpa_supplicant
+                wpa_cmd = [
+                    'sudo', 'wpa_supplicant', 
+                    '-B', '-i', interface,
+                    '-c', config_path,
+                    '-D', 'nl80211,wext'
+                ]
+                
+                result = subprocess.run(wpa_cmd, capture_output=True, text=True)
+                if result.returncode != 0:
+                    print(f"wpa_supplicant failed: {result.stderr}")
+                    return False
+                
+                # Wait for connection
+                for attempt in range(10):
+                    await asyncio.sleep(2)
+                    if WiFiManager.get_current_connection(interface) == ssid:
+                        # Get DHCP lease
+                        dhcp_result = subprocess.run([
+                            'sudo', 'dhcpcd', interface
+                        ], capture_output=True)
+                        
+                        # Clean up temp config
+                        subprocess.run(['sudo', 'rm', '-f', config_path], capture_output=True)
+                        return dhcp_result.returncode == 0
+                
+                # Connection failed
+                subprocess.run(['sudo', 'rm', '-f', config_path], capture_output=True)
+                return False
+                
             else:
-                # Open network
+                # Open network connection
                 result = subprocess.run([
                     'sudo', 'iw', 'dev', interface, 'connect', ssid
-                ], capture_output=True)
-                return result.returncode == 0
+                ], capture_output=True, text=True)
+                
+                if result.returncode == 0:
+                    # Get DHCP lease for open network
+                    await asyncio.sleep(2)
+                    dhcp_result = subprocess.run([
+                        'sudo', 'dhcpcd', interface  
+                    ], capture_output=True)
+                    return dhcp_result.returncode == 0
+                
+                return False
                 
         except Exception as e:
             print(f"WiFi connection error: {e}")

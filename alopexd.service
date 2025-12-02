@@ -1,0 +1,41 @@
+[Unit]
+Description=ALOPEX Network Management Daemon
+Documentation=https://alopex.onyx-digital.com/docs
+After=sysinit.target local-fs.target
+Before=network.target network-online.target NetworkManager.service systemd-networkd.service
+Wants=network.target
+DefaultDependencies=false
+
+[Service]
+Type=dbus
+BusName=org.alopex.NetworkManager
+ExecStart=/usr/bin/alopexd
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=10
+KillMode=mixed
+
+# Security hardening - enterprise grade
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/alopex /var/log/alopex /etc/alopex
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_SYS_MODULE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+
+# Resource limits for stability
+LimitNOFILE=65536
+LimitNPROC=128
+MemoryMax=256M
+CPUQuota=50%
+
+# Enterprise monitoring
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=alopexd
+
+[Install]
+WantedBy=multi-user.target network.target
+Also=alopex-early-network.service

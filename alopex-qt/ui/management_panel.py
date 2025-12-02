@@ -13,27 +13,31 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
 from PyQt6.QtGui import QFont, QPalette, QColor
 
-from ..network.discovery import NetworkInterface
-from ..network.system_integration import NetworkControl, BluetoothControl
-from ..network.wifi import WiFiManager, WiFiNetwork
-from ..network.vpn import VpnManager, VpnConfig
+from network.discovery import NetworkInterface
+from network.system_integration import NetworkControl, BluetoothControl
+from network.wifi import WiFiManager, WiFiNetwork
+from network.vpn import VpnManager, VpnConfig
 
 class AsyncWorker(QThread):
     """Background worker for async operations"""
     finished = pyqtSignal(bool, str)
     
-    def __init__(self, coro):
+    def __init__(self, coro_func, *args, **kwargs):
         super().__init__()
-        self.coro = coro
+        self.coro_func = coro_func
+        self.args = args
+        self.kwargs = kwargs
         
     def run(self):
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            result = loop.run_until_complete(self.coro)
+            result = loop.run_until_complete(self.coro_func(*self.args, **self.kwargs))
             self.finished.emit(True, str(result))
         except Exception as e:
             self.finished.emit(False, str(e))
+        finally:
+            loop.close()
 
 class ConfigurationCard(QFrame):
     """Beautiful configuration card for interface settings"""
@@ -202,7 +206,7 @@ class EthernetConfigCard(ConfigurationCard):
         """Apply network configuration"""
         if self.dhcp_checkbox.isChecked():
             # Configure DHCP
-            worker = AsyncWorker(NetworkControl.configure_dhcp(self.interface.name))
+            worker = AsyncWorker(NetworkControl.configure_dhcp, self.interface.name)
         else:
             # Configure static IP
             ip = self.ip_input.text().strip()
@@ -213,9 +217,8 @@ class EthernetConfigCard(ConfigurationCard):
                 QMessageBox.warning(self, "Invalid Configuration", "IP address is required for static configuration")
                 return
                 
-            worker = AsyncWorker(NetworkControl.configure_static_ip(
-                self.interface.name, ip, gateway, dns
-            ))
+            worker = AsyncWorker(NetworkControl.configure_static_ip, 
+                                self.interface.name, ip, gateway, dns)
         
         worker.finished.connect(self.on_configuration_complete)
         worker.start()

@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QFont, QPalette, QBrush, QColor, QPainter, QPen
 
-from ..network.discovery import NetworkInterface
+from network.discovery import NetworkInterface
 
 class InterfaceStatusIndicator(QWidget):
     """Beautiful animated status indicator"""
@@ -269,7 +269,7 @@ class InterfacePanel(QWidget):
         from PyQt6.QtWidgets import QScrollArea
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarNever)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setStyleSheet("""
             QScrollArea {
                 border: none;
@@ -339,11 +339,13 @@ class InterfacePanel(QWidget):
         """Handle interface selection"""
         # Update visual selection
         for i in range(self.content_layout.count()):
-            widget = self.content_layout.itemAt(i).widget()
-            if isinstance(widget, InterfaceListItem):
-                widget.set_selected(widget.interface.name == interface.name)
-                if widget.interface.name == interface.name:
-                    self.selected_item = widget
+            item = self.content_layout.itemAt(i)
+            if item is not None:
+                widget = item.widget()
+                if widget is not None and isinstance(widget, InterfaceListItem):
+                    widget.set_selected(widget.interface.name == interface.name)
+                    if widget.interface.name == interface.name:
+                        self.selected_item = widget
         
         # Emit signal
         self.interface_selected.emit(interface)

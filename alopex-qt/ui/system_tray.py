@@ -9,7 +9,7 @@ from PyQt6.QtCore import QTimer, pyqtSignal
 from PyQt6.QtGui import QIcon, QPixmap, QPainter, QBrush, QColor, QAction
 import asyncio
 from typing import Optional
-from ..network import NetworkDiscovery
+from network.discovery import NetworkDiscovery
 
 class AlopexSystemTray(QSystemTrayIcon):
     """Professional system tray integration for ALOPEX"""
@@ -118,7 +118,7 @@ class AlopexSystemTray(QSystemTrayIcon):
             has_internet = False
             
             for interface in interfaces:
-                if interface.is_up and interface.metrics.bytes_rx > 0:
+                if interface.status == "Connected" and interface.metrics.bytes_rx > 0:
                     active_count += 1
                     if interface.interface_type in ['ethernet', 'wifi']:
                         has_internet = True

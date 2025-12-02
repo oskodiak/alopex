@@ -1,0 +1,31 @@
+[Unit]
+Description=ALOPEX Early Network Configuration
+Documentation=https://alopex.onyx-digital.com/docs
+DefaultDependencies=false
+After=systemd-udevd.service
+Before=network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/bin/alopex-early-network
+TimeoutSec=30
+
+# Critical system service
+Restart=no
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=alopex-early
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/sys/class/net /proc/net /var/lib/alopex
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+
+[Install]
+WantedBy=sysinit.target
