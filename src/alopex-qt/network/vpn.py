@@ -1,7 +1,6 @@
 """
-VPN Management - Enterprise WireGuard and OpenVPN Integration
-Ported from Aurora WG for seamless VPN control
-Onyx Digital Intelligence Development
+VPN Management
+WireGuard and OpenVPN integration
 """
 
 import subprocess

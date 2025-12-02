@@ -10,6 +10,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QFont, QPalette, QBrush, QColor, QPainter, QPen
 
 from network.discovery import NetworkInterface
+from .arctic_theme import ArcticTheme, FontManager
 
 class InterfaceStatusIndicator(QWidget):
     """Beautiful animated status indicator"""
@@ -23,11 +24,11 @@ class InterfaceStatusIndicator(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
-        # Status colors
+        # Arctic Terminal status colors
         colors = {
-            "Connected": QColor(46, 204, 113),    # Emerald green
-            "Connecting": QColor(52, 152, 219),   # Dodger blue  
-            "Disconnected": QColor(149, 165, 166) # Gray
+            "Connected": QColor(ArcticTheme.SUCCESS),      # Arctic green
+            "Connecting": QColor(ArcticTheme.PRIMARY_ACCENT), # Arctic blue  
+            "Disconnected": QColor(ArcticTheme.TEXT_MUTED)    # Arctic gray
         }
         
         color = colors.get(self.status, colors["Disconnected"])
@@ -127,11 +128,8 @@ class InterfaceListItem(QWidget):
         
         # Interface name
         name_label = QLabel(self.interface.name)
-        name_font = QFont()
-        name_font.setPointSize(11)
-        name_font.setBold(True)
-        name_label.setFont(name_font)
-        name_label.setStyleSheet("color: #ecf0f1;")
+        name_label.setFont(FontManager.get_primary_font(11, 600))
+        name_label.setStyleSheet(f"color: {ArcticTheme.TEXT_PRIMARY};")
         
         # Interface details
         details = []
@@ -142,7 +140,8 @@ class InterfaceListItem(QWidget):
             
         detail_text = " • ".join(details) if details else self.interface.interface_type
         detail_label = QLabel(detail_text)
-        detail_label.setStyleSheet("color: #95a5a6; font-size: 9pt;")
+        detail_label.setFont(FontManager.get_primary_font(9))
+        detail_label.setStyleSheet(f"color: {ArcticTheme.TEXT_SECONDARY};")
         
         info_layout.addWidget(name_label)
         info_layout.addWidget(detail_label)
@@ -156,11 +155,13 @@ class InterfaceListItem(QWidget):
             speed_layout.setSpacing(1)
             
             up_label = QLabel(f"↑ {self.interface.metrics.speed_up:.1f}K")
-            up_label.setStyleSheet("color: #2ecc71; font-size: 8pt; font-weight: bold;")
+            up_label.setFont(FontManager.get_primary_font(8, 600))
+            up_label.setStyleSheet(f"color: {ArcticTheme.SUCCESS};")
             up_label.setAlignment(Qt.AlignmentFlag.AlignRight)
             
             down_label = QLabel(f"↓ {self.interface.metrics.speed_down:.1f}K")  
-            down_label.setStyleSheet("color: #3498db; font-size: 8pt; font-weight: bold;")
+            down_label.setFont(FontManager.get_primary_font(8, 600))
+            down_label.setStyleSheet(f"color: {ArcticTheme.PRIMARY_ACCENT};")
             down_label.setAlignment(Qt.AlignmentFlag.AlignRight)
             
             speed_layout.addWidget(up_label)
@@ -179,21 +180,21 @@ class InterfaceListItem(QWidget):
         
     def update_style(self):
         if self.selected:
-            self.setStyleSheet("""
-                InterfaceListItem {
+            self.setStyleSheet(f"""
+                InterfaceListItem {{
                     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 #3498db, stop:1 #2980b9);
+                        stop:0 {ArcticTheme.PRIMARY_ACCENT}, stop:1 #2E7DD2);
                     border-radius: 8px;
-                    border: 1px solid #2980b9;
-                }
+                    border: 1px solid {ArcticTheme.PRIMARY_ACCENT};
+                }}
             """)
         else:
-            self.setStyleSheet("""
-                InterfaceListItem:hover {
+            self.setStyleSheet(f"""
+                InterfaceListItem:hover {{
                     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 #404040, stop:1 #353535);
+                        stop:0 {ArcticTheme.SURFACE_HOVER}, stop:1 {ArcticTheme.BACKGROUND_ELEVATED});
                     border-radius: 8px;
-                }
+                }}
             """)
 
 class InterfaceTypeHeader(QWidget):

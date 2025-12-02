@@ -253,23 +253,22 @@ WantedBy=multi-user.target
 
 ## Security Monitoring
 
-### 1. Real-time Alerts
+### 1. Security Events
 
-**eBPF Event Processing**:
+**Event Processing**:
 ```python
 # Security event severity levels
 SEVERITY_LOW = 1      # Informational
 SEVERITY_MEDIUM = 2   # Warning  
-SEVERITY_HIGH = 3     # Critical - immediate response
-SEVERITY_CRITICAL = 4 # Emergency - potential breach
+SEVERITY_HIGH = 3     # Attention required
 ```
 
-**Alert Types**:
-- Privilege escalation attempts
-- Malicious netlink patterns
-- Network anomalies
-- Configuration tampering
-- Performance degradation attacks
+**Event Types**:
+- Privilege change monitoring
+- Network message validation
+- Interface configuration changes
+- Configuration file access
+- Rate limiting violations
 
 ### 2. Audit Trail
 
@@ -278,19 +277,17 @@ SEVERITY_CRITICAL = 4 # Emergency - potential breach
 audit_msg = f"ALOPEX_AUDIT: {operation} type={msg_type} size={size} pid={pid} uid={uid} ts={timestamp}"
 ```
 
-**Integration with Enterprise SIEM**:
-- Syslog RFC5424 format
+**Logging Integration**:
+- Syslog format support
 - JSON structured logging  
-- CEF (Common Event Format)
-- STIX/TAXII threat intelligence
+- systemd journal integration
 
 ### 3. Compliance
 
-**Standards Compliance**:
-- **NIST Cybersecurity Framework**: Full implementation
-- **ISO 27001**: Information security management
-- **SOC 2 Type II**: Security controls audit
-- **FIPS 140-2**: Cryptographic module validation
+**Security Standards**:
+- Standard Linux security practices
+- systemd security features
+- Capability-based security model
 
 ## Performance Impact
 

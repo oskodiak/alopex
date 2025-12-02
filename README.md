@@ -1,42 +1,44 @@
 # ALOPEX
 
-**Enterprise-Grade Network Management System**
+**Network Management System**
 
-ALOPEX is a professional network management solution that replaces NetworkManager with superior performance, reliability, and enterprise-grade features. Built by Onyx Digital Intelligence Development.
+ALOPEX is a network management daemon that provides an alternative to NetworkManager with focus on direct system control and minimal overhead.
 
 ## Features
 
-- **Enterprise Daemon** - Production-ready network management service
-- **Professional GUI** - PyQt6 interface with real-time telemetry
-- **NetworkManager Compatibility** - Drop-in nmcli replacement for seamless migration
-- **Direct System Integration** - No middleware bloat, direct kernel access
-- **Enterprise Configuration** - JSON-based connection profiles and management
-- **Real-time Monitoring** - Comprehensive network metrics and telemetry
+- **System Daemon** - Background network management service
+- **PyQt6 GUI** - Desktop interface for network configuration
+- **NetworkManager Compatibility** - nmcli compatibility layer for migration
+- **Direct System Control** - Uses kernel netlink interfaces directly
+- **JSON Configuration** - File-based connection profiles
+- **Network Monitoring** - Interface and connection status tracking
 
 ## Architecture
 
 ```
 src/
-├── alopex-daemon/           # Core enterprise daemon
+├── alopex-daemon/           # Core daemon
 │   ├── alopexd.py                # Main network management daemon
 │   ├── nmcli-compat.py           # NetworkManager CLI compatibility layer
+│   ├── ebpf_monitor.c            # eBPF monitoring code (requires compilation)
+│   ├── security.py               # Security controls
 │   └── alopex-early-network.py   # Early boot networking support
-├── alopex-qt/               # Professional GUI application  
+├── alopex-qt/               # GUI application  
 │   ├── main.py                   # GUI application entry point
 │   ├── network/                  # Network management modules
 │   │   ├── discovery.py          # Interface discovery and monitoring
 │   │   ├── wifi.py               # WiFi management and scanning
-│   │   ├── connection_manager.py # Enterprise connection management
-│   │   ├── system_integration.py # Direct system control
+│   │   ├── connection_manager.py # Connection management
+│   │   ├── system_integration.py # System control
 │   │   └── vpn.py                # VPN/WireGuard integration
-│   └── ui/                       # Professional user interface
+│   └── ui/                       # User interface
 │       ├── main_window.py        # Main application window
-│       ├── telemetry_panel.py    # Real-time network telemetry
+│       ├── telemetry_panel.py    # Network telemetry
 │       ├── interface_panel.py    # Interface management
 │       ├── management_panel.py   # Configuration management
 │       └── system_tray.py        # Desktop integration
 services/                    # systemd service definitions
-configs/                     # Build and development configurations  
+configs/                     # Development configurations  
 examples/                    # Configuration examples
 docs/                        # Documentation
 ```
@@ -49,21 +51,87 @@ cd src/alopex-qt
 python3 main.py
 ```
 
-### Enterprise Deployment
+### System Installation
 
 **System Requirements:**
 - Linux with systemd
 - Python 3.8+ with PyQt6
-- Sudo privileges for network management
+- Root privileges for network management
 
-**Dependencies:**
+### Package Requirements by Distribution
+
+#### NixOS
+Add to your `configuration.nix`:
+```nix
+environment.systemPackages = with pkgs; [
+  python3
+  (python3.withPackages (ps: with ps; [ pyqt6 psutil ]))
+  iw
+  wireguard-tools
+  dhcpcd
+  # eBPF tools (optional, for advanced monitoring)
+  bpftools
+  libbpf
+  llvmPackages.clang
+  llvmPackages.llvm
+];
+```
+
+#### Arch Linux / Manjaro / EndeavourOS
 ```bash
-# Python dependencies
-pip install PyQt6
+# Core dependencies
+sudo pacman -S python python-pyqt6 python-psutil iw dhcpcd wireguard-tools systemd
 
-# System tools
-sudo pacman -S iw wireguard-tools dhcpcd  # Arch
-sudo apt install iw wireguard-tools dhcpcd5  # Debian/Ubuntu
+# eBPF tools (optional)
+sudo pacman -S bpf clang llvm libbpf
+
+# AUR packages (if needed)
+yay -S bpftool
+```
+
+#### Debian / Ubuntu / Linux Mint
+```bash
+# Update package list
+sudo apt update
+
+# Core dependencies
+sudo apt install python3 python3-pyqt6 python3-psutil iw dhcpcd5 wireguard systemd
+
+# eBPF tools (optional)
+sudo apt install bpftools libbpf-dev clang llvm
+
+# For older Ubuntu versions, install via pip
+pip3 install --user PyQt6 psutil
+```
+
+#### Fedora / CentOS Stream / RHEL
+```bash
+# Core dependencies
+sudo dnf install python3 python3-PyQt6 python3-psutil iw dhcpcd wireguard-tools systemd
+
+# eBPF tools (optional)
+sudo dnf install bpftool libbpf-devel clang llvm
+
+# Enable development tools
+sudo dnf groupinstall "Development Tools"
+```
+
+#### openSUSE
+```bash
+# Core dependencies
+sudo zypper install python3 python3-qt6 python3-psutil iw dhcpcd wireguard-tools systemd
+
+# eBPF tools (optional)
+sudo zypper install bpftool libbpf-devel clang llvm
+```
+
+#### Alpine Linux
+```bash
+# Core dependencies
+sudo apk add python3 py3-pyqt6 py3-psutil iw dhcpcd wireguard-tools
+
+# eBPF tools (optional)
+sudo apk add bpftool libbpf-dev clang llvm
 ```
 
 **Service Installation:**
@@ -81,39 +149,31 @@ sudo systemctl enable alopex-early-network
 sudo systemctl start alopexd
 ```
 
-## Enterprise Features
+## Key Features
 
-- **NetworkManager Migration** - Drop-in nmcli compatibility for existing scripts
-- **Enterprise Configuration** - JSON-based connection profiles and policies
-- **Early Boot Networking** - Critical network setup before main system services
-- **Real-time Telemetry** - Comprehensive monitoring and alerting
-- **Professional GUI** - Desktop interface suitable for corporate environments
-- **Service Integration** - Full systemd integration for enterprise deployment
+- **NetworkManager Migration** - nmcli compatibility layer for existing scripts
+- **JSON Configuration** - File-based connection profiles
+- **Early Boot Networking** - Network setup during early boot phase
+- **Network Monitoring** - Interface and connection status tracking
+- **Desktop GUI** - PyQt6 interface for configuration management
+- **systemd Integration** - Service-based daemon architecture
 
-## Security Architecture
+## Security Features
 
-ALOPEX implements enterprise-grade security controls and monitoring:
+ALOPEX includes security controls and monitoring capabilities:
 
-### Core Security Features
-- **Zero-Trust Network Architecture** - All connections verified and monitored
-- **eBPF Traffic Analysis** - Real-time packet inspection and threat detection
-- **Privilege Separation** - Daemon runs with minimal required privileges
-- **Secure Configuration** - Encrypted connection profiles and credential storage
-- **Audit Logging** - Comprehensive security event logging and alerting
+### Security Controls
+- **Privilege Separation** - Daemon runs with minimal required capabilities
+- **eBPF Monitoring** - Optional kernel-space monitoring (requires compilation)
+- **Input Validation** - Network message validation and rate limiting
+- **Audit Logging** - Security event logging
 
-### Advanced Monitoring
-- **Real-time Threat Detection** - eBPF-based intrusion detection system
-- **Network Traffic Analysis** - Deep packet inspection for anomaly detection
-- **Performance Monitoring** - System resource and network performance tracking
-- **Security Event Correlation** - Automated threat pattern recognition
+### Monitoring
+- **Interface Monitoring** - Network interface status tracking
+- **Connection Logging** - Network connection audit trail
+- **System Integration** - Integration with systemd logging
 
-### Enterprise Deployment
-- **Defense-in-Depth** - Multiple security layers and fail-safes
-- **Compliance Ready** - Supports SOC 2, ISO 27001, and government security standards
-- **Incident Response** - Automated threat mitigation and administrator alerting
-- **Security Configuration** - Hardened defaults with enterprise policy enforcement
-
-**Security Documentation:** See `docs/SECURITY-ARCHITECTURE.md` for complete technical specifications and deployment guidelines.
+**Note:** eBPF monitoring requires additional setup and compilation. See `docs/SECURITY-ARCHITECTURE.md` for implementation details.
 
 ## NetworkManager Compatibility
 
@@ -130,20 +190,20 @@ nmcli device wifi list
 
 ## Development Status
 
-**Production Ready:**
-- ✅ Enterprise daemon with systemd integration
-- ✅ NetworkManager compatibility layer (nmcli drop-in replacement)
-- ✅ Professional GUI with real-time telemetry
-- ✅ Connection state management and persistence
-- ✅ WiFi scanning and management
-- ✅ Early boot networking support
+**Core Features:**
+- System daemon with systemd integration
+- NetworkManager compatibility layer (nmcli replacement)
+- PyQt6 GUI interface
+- Connection state management
+- WiFi scanning and management
+- Early boot networking support
 
-**In Progress:**
-- 🔄 Enterprise testing and deployment validation
-- 🔄 DBus interface for desktop integration  
-- 🔄 Package builds for major distributions
+**In Development:**
+- eBPF monitoring compilation and integration
+- DBus interface for desktop integration  
+- Distribution packaging
+- Advanced security features
 
 ---
 
-**Onyx Digital Intelligence Development**  
-*Enterprise Network Security Solutions*
+**ALOPEX Network Management System**

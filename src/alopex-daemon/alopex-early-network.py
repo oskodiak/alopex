@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 ALOPEX Early Network Configuration
-Critical system service for early boot network setup
-Onyx Digital Intelligence Development LLC
+Early boot network setup service
 """
 
 import sys

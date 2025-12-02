@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-ALOPEX NetworkManager Compatibility Layer (nmcli)
-Drop-in replacement for nmcli that uses ALOPEX backend
-Onyx Digital Intelligence Development
+ALOPEX NetworkManager Compatibility Layer
+Drop-in replacement for nmcli
 """
 
 import sys
@@ -399,7 +398,7 @@ class NmcliCompat:
     def show_help(self) -> int:
         """Show compatibility help"""
         print("ALOPEX NetworkManager Compatibility Layer")
-        print("Onyx Digital Intelligence Development")
+        print("")
         print("https://onyxdigital.dev/alopex")
         print("")
         print(f"nmcli (ALOPEX compatibility shim) {SHIM_VERSION}")

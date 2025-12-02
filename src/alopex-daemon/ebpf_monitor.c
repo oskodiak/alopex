@@ -1,7 +1,6 @@
 /*
  * ALOPEX eBPF Network Security Monitor
- * Kernel-space network anomaly detection and privilege escalation prevention
- * Onyx Digital Intelligence Development - Military-Grade Security
+ * Kernel-space network monitoring and security controls
  */
 
 #include <linux/bpf.h>

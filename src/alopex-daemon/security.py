@@ -1,7 +1,6 @@
 """
-ALOPEX Security Module - Military-Grade Network Security
-Fortress-level hardening against privilege escalation and network attacks
-Onyx Digital Intelligence Development
+ALOPEX Security Module
+Network security controls and monitoring
 """
 
 import os

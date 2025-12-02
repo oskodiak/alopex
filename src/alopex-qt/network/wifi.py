@@ -1,7 +1,6 @@
 """
-WiFi Management - Enterprise-grade network scanning and connection
-Clean WiFi control without NetworkManager bloat
-Onyx Digital Intelligence Development
+WiFi Management
+Network scanning and connection control
 """
 
 import subprocess

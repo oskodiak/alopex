@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 ALOPEX Network Management Daemon
-Enterprise-grade networking that makes NetworkManager obsolete
-Onyx Digital Intelligence Development LLC
+System-level network management service
 """
 
 import sys
