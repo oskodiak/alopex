@@ -10,6 +10,8 @@ import os
 import json
 import uuid
 import logging
+import asyncio
+import subprocess
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from enum import Enum
@@ -64,6 +66,7 @@ try:
     from network.discovery import NetworkDiscovery
     from network.system_integration import NetworkControl
     from network.wifi import WiFiManager
+    from network.connection_manager import ConnectionManager
 except ImportError as e:
     logger.exception("Failed to import ALOPEX core modules")
     print(f"ALOPEX nmcli shim: failed to import core modules: {e}", file=sys.stderr)
@@ -111,6 +114,7 @@ class NmcliCompat:
         self.discovery = NetworkDiscovery()
         self.control = NetworkControl()
         self.wifi = WiFiManager()
+        self.conn_mgr = ConnectionManager()
         self.quiet = os.getenv("ALOPEX_NMCLI_QUIET") is not None
         self.debug = os.getenv("ALOPEX_DEBUG") is not None
     
@@ -163,22 +167,29 @@ class NmcliCompat:
                 return 1
         
         try:
-            # TODO: Implement WiFi.scan() in core - for now use placeholder
-            # networks = self.wifi.scan(device)
-            networks = self._placeholder_wifi_networks()
+            # Use real ALOPEX WiFi scanning
+            networks = self.wifi.scan_networks(device)
             
             if args.get('terse', False):
                 # Terse format: SSID:MODE:CHAN:RATE:SIGNAL:BARS:SECURITY
                 for net in networks:
-                    bars = "*" * min(4, max(1, net.signal // 25))
-                    print(f"{net.ssid}:{net.mode}:{net.channel}:{net.rate}:{net.signal}:{bars}:{net.security}")
+                    # Convert signal strength to bars (dBm to relative)
+                    signal_percent = max(0, min(100, (net.signal_strength + 100) * 2))
+                    bars = "*" * min(4, max(1, signal_percent // 25))
+                    freq_mhz = net.frequency if net.frequency else "2412"
+                    channel = self._freq_to_channel(freq_mhz)
+                    print(f"{net.ssid}:Infra:{channel}:54 Mbit/s:{signal_percent}:{bars}:{net.security}")
             else:
-                # Human format matching nmcli
+                # Human format matching nmcli exactly
                 print("*  SSID               MODE   CHAN  RATE        SIGNAL  BARS  SECURITY")
                 for net in networks:
-                    bars = "*" * min(4, max(1, net.signal // 25))
-                    active = "*" if net.active else " "
-                    print(f"{active}  {net.ssid:<17} {net.mode:<6} {net.channel:<4} {net.rate:<11} {net.signal:<6} {bars:<4}  {net.security}")
+                    # Convert signal strength to bars and percentage
+                    signal_percent = max(0, min(100, (net.signal_strength + 100) * 2))
+                    bars = "*" * min(4, max(1, signal_percent // 25))
+                    active = "*" if net.connected else " "
+                    freq_mhz = net.frequency if net.frequency else "2412"
+                    channel = self._freq_to_channel(freq_mhz)
+                    print(f"{active}  {net.ssid:<17} {'Infra':<6} {channel:<4} {'54 Mbit/s':<11} {signal_percent:<6} {bars:<4}  {net.security}")
             
             return 0
             
@@ -199,8 +210,9 @@ class NmcliCompat:
             return 2
         
         try:
-            # TODO: Implement NetworkControl.connect_device() in core
-            success, msg = self._placeholder_device_connect(device)
+            # Use real ALOPEX connection management via asyncio
+            success = asyncio.run(self._async_connect_device(device))
+            msg = f"Device {device} connected successfully" if success else f"Failed to connect {device}"
             if success:
                 if not args.get('quiet', False):
                     print(f"Device '{device}' successfully connected.")
@@ -218,23 +230,24 @@ class NmcliCompat:
     def connection_show(self, args) -> int:
         """nmcli connection show"""
         try:
-            # TODO: Implement NetworkControl.list_connections() in core
-            connections = self._placeholder_connections()
+            # Use real ALOPEX connection management
+            profiles = self.conn_mgr.get_profiles()
+            connections = [(p.name, p.connection_type, p.interface) for p in profiles.values()]
             
             if args.get('terse', False):
                 # Terse format: NAME:UUID:TYPE:DEVICE
-                for conn in connections:
-                    conn_uuid = deterministic_uuid_for_name(conn.name)
-                    device = conn.device if conn.device else ""
-                    print(f"{conn.name}:{conn_uuid}:{conn.type}:{device}")
+                for name, conn_type, device in connections:
+                    conn_uuid = deterministic_uuid_for_name(name)
+                    device_str = device if device else ""
+                    print(f"{name}:{conn_uuid}:{conn_type}:{device_str}")
             else:
                 # Human-readable format matching nmcli exactly
                 print("NAME                UUID                                  TYPE      DEVICE")
                 
-                for conn in connections:
-                    conn_uuid = deterministic_uuid_for_name(conn.name)
-                    device = conn.device if conn.device else "--"
-                    print(f"{conn.name:<18} {conn_uuid}  {conn.type:<8} {device}")
+                for name, conn_type, device in connections:
+                    conn_uuid = deterministic_uuid_for_name(name)
+                    device_str = device if device else "--"
+                    print(f"{name:<18} {conn_uuid}  {conn_type:<8} {device_str}")
             
             if not connections and not args.get('terse', False) and not self.quiet:
                 if not self.quiet:
@@ -257,8 +270,9 @@ class NmcliCompat:
             return 2
         
         try:
-            # TODO: Implement NetworkControl.activate_connection() in core
-            success, msg = self._placeholder_connection_control(conn_name, "activate")
+            # Use real ALOPEX connection management via asyncio
+            success = asyncio.run(self.conn_mgr.connect_profile(conn_name))
+            msg = f"Connection {conn_name} activated successfully" if success else f"Failed to activate {conn_name}"
             if success:
                 if not args.get('quiet', False):
                     print(f"Connection '{conn_name}' successfully activated.")
@@ -282,8 +296,16 @@ class NmcliCompat:
             return 2
         
         try:
-            # TODO: Implement NetworkControl.deactivate_connection() in core
-            success, msg = self._placeholder_connection_control(conn_name, "deactivate")
+            # Use real ALOPEX connection management via asyncio  
+            # Find the profile to get interface name for disconnection
+            profiles = self.conn_mgr.get_profiles()
+            if conn_name in profiles:
+                interface = profiles[conn_name].interface
+                success = asyncio.run(self.conn_mgr.disconnect_interface(interface))
+                msg = f"Connection {conn_name} deactivated successfully" if success else f"Failed to deactivate {conn_name}"
+            else:
+                success = False
+                msg = f"Connection {conn_name} not found"
             if success:
                 if not args.get('quiet', False):
                     print(f"Connection '{conn_name}' successfully deactivated.")
@@ -335,8 +357,9 @@ class NmcliCompat:
         
         try:
             if action == 'on':
-                # TODO: Implement WiFi.enable_radio() in core
-                success, msg = self._placeholder_wifi_radio(True)
+                # Enable WiFi interfaces - simplified approach
+                success = self._enable_wifi_interfaces()
+                msg = "WiFi radio enabled" if success else "Failed to enable WiFi radio"
                 if success:
                     if not args.get('quiet', False):
                         print("WiFi radio enabled")
@@ -347,8 +370,9 @@ class NmcliCompat:
                     return 1
                     
             elif action == 'off':
-                # TODO: Implement WiFi.disable_radio() in core
-                success, msg = self._placeholder_wifi_radio(False)
+                # Disable WiFi interfaces - simplified approach
+                success = self._disable_wifi_interfaces()
+                msg = "WiFi radio disabled" if success else "Failed to disable WiFi radio"
                 if success:
                     if not args.get('quiet', False):
                         print("WiFi radio disabled")
@@ -358,9 +382,8 @@ class NmcliCompat:
                         print(f"Error: failed to disable WiFi radio: {msg}", file=sys.stderr)
                     return 1
             else:
-                # Query current state
-                # TODO: Implement WiFi.is_radio_enabled() in core
-                enabled = self._placeholder_wifi_radio_status()
+                # Query current state by checking if WiFi interfaces exist
+                enabled = len(self.wifi.get_wifi_interfaces()) > 0
                 if args.get('terse', False):
                     print("enabled" if enabled else "disabled")
                 else:
@@ -415,50 +438,58 @@ class NmcliCompat:
         print(f"using ALOPEX backend (alopexd {ALOPEX_VERSION})")
         return 0
     
-    # PLACEHOLDER METHODS - TODO: Move to ALOPEX core APIs
-    def _placeholder_wifi_networks(self):
-        """Placeholder WiFi networks until core WiFi.scan() is implemented"""
-        from collections import namedtuple
-        WifiAP = namedtuple('WifiAP', ['ssid', 'mode', 'channel', 'rate', 'signal', 'security', 'active'])
-        return [
-            WifiAP("CorpNetwork-5G", "Infra", "36", "540 Mbit/s", 89, "WPA2", True),
-            WifiAP("CorpNetwork", "Infra", "6", "135 Mbit/s", 75, "WPA2", False),
-            WifiAP("Guest-Network", "Infra", "1", "54 Mbit/s", 45, "WPA2", False),
-        ]
-    
-    def _placeholder_device_connect(self, device: str) -> Tuple[bool, str]:
-        """Placeholder device connection until core NetworkControl.connect_device() is implemented"""
-        return True, f"Device {device} connected successfully"
-    
-    def _placeholder_connections(self):
-        """Placeholder connections until core NetworkControl.list_connections() is implemented"""
-        from collections import namedtuple
-        Connection = namedtuple('Connection', ['name', 'type', 'device'])
-        # Load from connections.json if available
+    # UTILITY METHODS
+    def _freq_to_channel(self, freq_mhz: str) -> str:
+        """Convert WiFi frequency to channel number"""
         try:
-            connections_file = Path("/var/lib/alopex/connections.json")
-            if connections_file.exists():
-                import json
-                with open(connections_file) as f:
-                    data = json.load(f)
-                return [Connection(name, config.get('type', 'ethernet'), config.get('device', '')) 
-                       for name, config in data.items()]
+            freq = int(freq_mhz)
+            if 2412 <= freq <= 2484:
+                # 2.4 GHz band
+                return str((freq - 2412) // 5 + 1)
+            elif 5170 <= freq <= 5825:
+                # 5 GHz band  
+                return str((freq - 5000) // 5)
         except:
             pass
-        return []
+        return "1"  # Default channel
     
-    def _placeholder_connection_control(self, conn_name: str, action: str) -> Tuple[bool, str]:
-        """Placeholder connection control until core NetworkControl methods are implemented"""
-        return True, f"Connection {conn_name} {action}d successfully"
+    async def _async_connect_device(self, device: str) -> bool:
+        """Async device connection helper"""
+        try:
+            # Find profile for this device and connect
+            profiles = self.conn_mgr.get_profiles()
+            device_profiles = [p for p in profiles.values() if p.interface == device]
+            if device_profiles:
+                # Use first available profile for this device
+                return await self.conn_mgr.connect_profile(device_profiles[0].name)
+            else:
+                # Try auto-connecting the interface
+                return await self.conn_mgr.auto_connect_interface(device)
+        except Exception as e:
+            logger.exception(f"Async device connect failed for {device}")
+            return False
     
-    def _placeholder_wifi_radio(self, enable: bool) -> Tuple[bool, str]:
-        """Placeholder WiFi radio control until core WiFi methods are implemented"""
-        action = "enabled" if enable else "disabled"
-        return True, f"WiFi radio {action}"
+    def _enable_wifi_interfaces(self) -> bool:
+        """Enable WiFi interfaces using ip commands"""
+        try:
+            wifi_ifaces = self.wifi.get_wifi_interfaces()
+            for iface in wifi_ifaces:
+                subprocess.run(['sudo', 'ip', 'link', 'set', iface, 'up'], check=True)
+            return True
+        except Exception as e:
+            logger.exception("Failed to enable WiFi interfaces")
+            return False
     
-    def _placeholder_wifi_radio_status(self) -> bool:
-        """Placeholder WiFi radio status until core WiFi.is_radio_enabled() is implemented"""
-        return True  # Assume WiFi is enabled
+    def _disable_wifi_interfaces(self) -> bool:
+        """Disable WiFi interfaces using ip commands"""
+        try:
+            wifi_ifaces = self.wifi.get_wifi_interfaces()
+            for iface in wifi_ifaces:
+                subprocess.run(['sudo', 'ip', 'link', 'set', iface, 'down'], check=True)
+            return True
+        except Exception as e:
+            logger.exception("Failed to disable WiFi interfaces")
+            return False
 
 def _check_bypass():
     """Check for bypass environment and exec real nmcli if requested"""
