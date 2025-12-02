@@ -1,105 +1,124 @@
 # ALOPEX
 
-**Revolutionary Network Manager for Linux**
+**Enterprise-Grade Network Management System**
 
-ALOPEX is a professional Qt-based network management application that replaces NetworkManager's complexity with beautiful simplicity and comprehensive telemetry. Built by Onyx Digital Intelligence Development LLC for enterprise and consumer use.
+ALOPEX is a professional network management solution that replaces NetworkManager with superior performance, reliability, and enterprise-grade features. Built by Onyx Digital Intelligence Development.
 
 ## Features
 
-- **Professional Qt Interface** - Beautiful GUI with real-time network monitoring
-- **Live Telemetry Hub** - Animated traffic graphs, comprehensive metrics, status indicators
-- **Complete Network Control** - Ethernet, WiFi, VPN, and Bluetooth management
-- **Direct System Integration** - No NetworkManager dependencies, direct hardware control
-- **Enterprise Grade** - Professional aesthetics suitable for corporate environments
-- **User-Friendly Design** - Intuitive for everyday users, powerful for network professionals
+- **Enterprise Daemon** - Production-ready network management service
+- **Professional GUI** - PyQt6 interface with real-time telemetry
+- **NetworkManager Compatibility** - Drop-in nmcli replacement for seamless migration
+- **Direct System Integration** - No middleware bloat, direct kernel access
+- **Enterprise Configuration** - JSON-based connection profiles and management
+- **Real-time Monitoring** - Comprehensive network metrics and telemetry
 
 ## Architecture
 
-- **alopex-qt/** - Professional PyQt6 GUI application
-  - Real-time network discovery and monitoring
-  - Beautiful animated telemetry interface
-  - System tray integration
-  - Professional visual design
-- **network/** - Comprehensive network management core
-  - Direct `/sys/class/net/` and `/proc/net/dev` integration
-  - WireGuard VPN support
-  - WiFi scanning and management
-  - Bluetooth device control
+```
+src/
+├── alopex-daemon/           # Core enterprise daemon
+│   ├── alopexd.py                # Main network management daemon
+│   ├── nmcli-compat.py           # NetworkManager CLI compatibility layer
+│   └── alopex-early-network.py   # Early boot networking support
+├── alopex-qt/               # Professional GUI application  
+│   ├── main.py                   # GUI application entry point
+│   ├── network/                  # Network management modules
+│   │   ├── discovery.py          # Interface discovery and monitoring
+│   │   ├── wifi.py               # WiFi management and scanning
+│   │   ├── connection_manager.py # Enterprise connection management
+│   │   ├── system_integration.py # Direct system control
+│   │   └── vpn.py                # VPN/WireGuard integration
+│   └── ui/                       # Professional user interface
+│       ├── main_window.py        # Main application window
+│       ├── telemetry_panel.py    # Real-time network telemetry
+│       ├── interface_panel.py    # Interface management
+│       ├── management_panel.py   # Configuration management
+│       └── system_tray.py        # Desktop integration
+services/                    # systemd service definitions
+configs/                     # Build and development configurations  
+examples/                    # Configuration examples
+docs/                        # Documentation
+```
 
-## Installation & Deployment
+## Installation
 
 ### Quick Start
 ```bash
-cd ~/projects/alopex/alopex-qt
+cd src/alopex-qt
 python3 main.py
 ```
 
 ### Enterprise Deployment
 
 **System Requirements:**
-- Linux distribution with X11 or Wayland support
+- Linux with systemd
 - Python 3.8+ with PyQt6
 - Sudo privileges for network management
-- System tray support for desktop integration
 
 **Dependencies:**
 ```bash
-# Core dependencies
+# Python dependencies
 pip install PyQt6
 
-# System tools (install via package manager)
-sudo pacman -S iw wireguard-tools bluez bluez-utils dhcpcd
-# or
-sudo apt install iw wireguard-tools bluez bluetooth dhcpcd5
+# System tools
+sudo pacman -S iw wireguard-tools dhcpcd  # Arch
+sudo apt install iw wireguard-tools dhcpcd5  # Debian/Ubuntu
 ```
 
-**System Permissions:**
-ALOPEX requires sudo access for network management. For enterprise deployment:
+**Service Installation:**
+```bash
+# Install daemon service
+sudo cp services/alopexd.service /etc/systemd/system/
+sudo cp services/alopex-early-network.service /etc/systemd/system/
+
+# Install compatibility layer
+sudo cp src/alopex-daemon/nmcli-compat.py /usr/local/bin/nmcli
+
+# Enable services
+sudo systemctl enable alopexd
+sudo systemctl enable alopex-early-network
+sudo systemctl start alopexd
+```
+
+## Enterprise Features
+
+- **NetworkManager Migration** - Drop-in nmcli compatibility for existing scripts
+- **Enterprise Configuration** - JSON-based connection profiles and policies
+- **Early Boot Networking** - Critical network setup before main system services
+- **Real-time Telemetry** - Comprehensive monitoring and alerting
+- **Professional GUI** - Desktop interface suitable for corporate environments
+- **Service Integration** - Full systemd integration for enterprise deployment
+
+## NetworkManager Compatibility
+
+ALOPEX provides a compatibility layer for existing NetworkManager deployments:
 
 ```bash
-# Add ALOPEX sudo rules
-echo '%alopex ALL=(ALL) NOPASSWD: /usr/bin/ip, /usr/bin/iw, /usr/bin/wg-quick, /usr/bin/dhcpcd, /usr/bin/bluetoothctl' | sudo tee /etc/sudoers.d/alopex
+# Existing scripts continue to work
+nmcli device status
+nmcli connection show
+nmcli device wifi list
 
-# Create alopex group and add users
-sudo groupadd alopex
-sudo usermod -a -G alopex $USER
+# But now powered by ALOPEX backend
 ```
-
-**Desktop Integration:**
-- System tray icon provides seamless network monitoring
-- Application minimizes to tray instead of closing
-- Professional notifications for connection status changes
-- Right-click context menu for quick network actions
-
-## Network Management
-
-ALOPEX provides enterprise-grade network control:
-
-- **Real-time Traffic Monitoring** - Live graphs with gradient fills and animations
-- **Comprehensive Metrics** - Bytes, packets, errors, link speed, duplex, MTU
-- **Interface Organization** - Grouped by type (Ethernet, WiFi, VPN) with visual indicators
-- **Professional Status Display** - Animated connection indicators with glow effects
-- **Advanced Configuration** - DHCP/static IP switching, DNS management
 
 ## Development Status
 
-**Completed:**
-- Network interface discovery and real-time monitoring
-- Professional Qt interface with telemetry hub
-- VPN management (WireGuard integration)
-- WiFi scanning and connection control
-- System integration for direct network control
-
-**Completed:**
-- Management panel with configuration cards
-- System tray integration for enterprise deployment 
-- Professional Qt interface with real-time telemetry
+**Production Ready:**
+- ✅ Enterprise daemon with systemd integration
+- ✅ NetworkManager compatibility layer (nmcli drop-in replacement)
+- ✅ Professional GUI with real-time telemetry
+- ✅ Connection state management and persistence
+- ✅ WiFi scanning and management
+- ✅ Early boot networking support
 
 **In Progress:**
-- Final testing and deployment preparation
-- Bluetooth device management UI completion
+- 🔄 Enterprise testing and deployment validation
+- 🔄 DBus interface for desktop integration  
+- 🔄 Package builds for major distributions
 
 ---
 
-**Onyx Digital Intelligence Development LLC**  
-*Professional Network Security Solutions*
+**Onyx Digital Intelligence Development**  
+*Enterprise Network Security Solutions*
