@@ -90,6 +90,31 @@ sudo systemctl start alopexd
 - **Professional GUI** - Desktop interface suitable for corporate environments
 - **Service Integration** - Full systemd integration for enterprise deployment
 
+## Security Architecture
+
+ALOPEX implements enterprise-grade security controls and monitoring:
+
+### Core Security Features
+- **Zero-Trust Network Architecture** - All connections verified and monitored
+- **eBPF Traffic Analysis** - Real-time packet inspection and threat detection
+- **Privilege Separation** - Daemon runs with minimal required privileges
+- **Secure Configuration** - Encrypted connection profiles and credential storage
+- **Audit Logging** - Comprehensive security event logging and alerting
+
+### Advanced Monitoring
+- **Real-time Threat Detection** - eBPF-based intrusion detection system
+- **Network Traffic Analysis** - Deep packet inspection for anomaly detection
+- **Performance Monitoring** - System resource and network performance tracking
+- **Security Event Correlation** - Automated threat pattern recognition
+
+### Enterprise Deployment
+- **Defense-in-Depth** - Multiple security layers and fail-safes
+- **Compliance Ready** - Supports SOC 2, ISO 27001, and government security standards
+- **Incident Response** - Automated threat mitigation and administrator alerting
+- **Security Configuration** - Hardened defaults with enterprise policy enforcement
+
+**Security Documentation:** See `docs/SECURITY-ARCHITECTURE.md` for complete technical specifications and deployment guidelines.
+
 ## NetworkManager Compatibility
 
 ALOPEX provides a compatibility layer for existing NetworkManager deployments:

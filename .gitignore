@@ -1,1 +1,16 @@
-CLAUDE.md
+# Build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Development
+debug.log
