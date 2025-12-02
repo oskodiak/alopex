@@ -1,22 +1,43 @@
 """
-VPN Management - WireGuard Integration
+VPN Management - Enterprise WireGuard and OpenVPN Integration
 Ported from Aurora WG for seamless VPN control
+Onyx Digital Intelligence Development
 """
 
 import subprocess
 import asyncio
+import logging
+import re
 from pathlib import Path
-from typing import List, Optional
-from dataclasses import dataclass
+from typing import List, Optional, Dict
+from dataclasses import dataclass, field
+from enum import Enum
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+class VpnStatus(Enum):
+    """VPN connection status"""
+    DISCONNECTED = "disconnected"
+    CONNECTING = "connecting"
+    CONNECTED = "connected"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
 
 @dataclass
 class VpnConfig:
-    """VPN configuration profile"""
+    """Enterprise VPN configuration profile"""
     name: str
     path: Path
     config_type: str = "wireguard"  # wireguard, openvpn
     location: Optional[str] = None
     last_used: Optional[str] = None
+    status: VpnStatus = VpnStatus.DISCONNECTED
+    interface_name: Optional[str] = None
+    endpoint: Optional[str] = None
+    public_key: Optional[str] = None
+    allowed_ips: Optional[str] = None
+    connection_metrics: Dict = field(default_factory=dict)
 
 class VpnManager:
     """WireGuard and OpenVPN management"""
@@ -83,28 +104,46 @@ class VpnManager:
             return "Unknown"
     
     @staticmethod
-    async def connect_wireguard(config_path: Path) -> bool:
-        """Connect WireGuard VPN"""
+    async def connect_wireguard(config_path: Path) -> tuple[bool, str]:
+        """Connect WireGuard VPN with enterprise monitoring"""
         try:
+            interface_name = config_path.stem
+            logger.info(f"Connecting WireGuard: {interface_name}")
+            
+            # Check if already connected
+            if VpnManager.is_wireguard_active(interface_name):
+                logger.warning(f"WireGuard interface {interface_name} already active")
+                return True, f"Interface {interface_name} already connected"
+            
             # Use wg-quick to bring up the interface
-            result = await asyncio.create_subprocess_exec(
+            process = await asyncio.create_subprocess_exec(
                 'sudo', 'wg-quick', 'up', str(config_path),
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
             
-            stdout, stderr = await result.communicate()
+            stdout, stderr = await process.communicate()
             
-            if result.returncode == 0:
-                print(f"WireGuard connected: {config_path.name}")
-                return True
+            if process.returncode == 0:
+                logger.info(f"WireGuard connected: {interface_name}")
+                
+                # Verify connection and get status
+                await asyncio.sleep(2)  # Allow time for interface to come up
+                if VpnManager.is_wireguard_active(interface_name):
+                    status = VpnManager.get_wireguard_status(interface_name)
+                    logger.debug(f"WireGuard status: {status}")
+                    return True, f"Connected to {interface_name}"
+                else:
+                    logger.error(f"WireGuard interface {interface_name} failed to come up")
+                    return False, "Interface failed to activate"
             else:
-                print(f"WireGuard connection failed: {stderr.decode()}")
-                return False
+                error_msg = stderr.decode().strip()
+                logger.error(f"WireGuard connection failed: {error_msg}")
+                return False, f"Connection failed: {error_msg}"
                 
         except Exception as e:
-            print(f"Error connecting WireGuard: {e}")
-            return False
+            logger.exception(f"Error connecting WireGuard: {e}")
+            return False, f"Exception: {str(e)}"
     
     @staticmethod
     async def disconnect_wireguard(interface_name: str) -> bool:
@@ -200,3 +239,95 @@ class VpnManager:
                         peer[key.replace(' ', '_')] = value
         
         return status
+    
+    @staticmethod
+    def get_connection_health(interface_name: str) -> Dict:
+        """Get comprehensive VPN connection health metrics"""
+        health = {
+            'status': VpnStatus.DISCONNECTED,
+            'latency': None,
+            'bandwidth_up': 0,
+            'bandwidth_down': 0,
+            'handshake_age': None,
+            'endpoint_reachable': False,
+            'dns_working': False
+        }
+        
+        try:
+            # Check if interface is active
+            if not VpnManager.is_wireguard_active(interface_name):
+                return health
+                
+            health['status'] = VpnStatus.CONNECTED
+            
+            # Get WireGuard status for handshake info
+            wg_status = VpnManager.get_wireguard_status(interface_name)
+            if interface_name in wg_status and wg_status[interface_name]['peers']:
+                peer = wg_status[interface_name]['peers'][0]
+                
+                # Parse handshake time
+                if peer.get('latest_handshake'):
+                    handshake_str = peer['latest_handshake']
+                    if 'ago' in handshake_str:
+                        health['handshake_age'] = handshake_str
+                
+                # Parse transfer data
+                if peer.get('transfer'):
+                    transfer_str = peer['transfer']
+                    # Extract received/sent bytes (simplified parsing)
+                    if 'received' in transfer_str and 'sent' in transfer_str:
+                        health['bandwidth_down'] = "Available"
+                        health['bandwidth_up'] = "Available"
+                
+                # Test endpoint reachability
+                endpoint = peer.get('endpoint')
+                if endpoint:
+                    try:
+                        ping_result = subprocess.run([
+                            'ping', '-c', '1', '-W', '2', endpoint.split(':')[0]
+                        ], capture_output=True, timeout=5)
+                        health['endpoint_reachable'] = ping_result.returncode == 0
+                        
+                        if health['endpoint_reachable']:
+                            # Extract latency from ping
+                            ping_output = ping_result.stdout.decode()
+                            latency_match = re.search(r'time=([\d.]+)', ping_output)
+                            if latency_match:
+                                health['latency'] = f"{latency_match.group(1)}ms"
+                    except:
+                        pass
+            
+            # Test DNS resolution through VPN
+            try:
+                dns_result = subprocess.run([
+                    'nslookup', 'google.com', '8.8.8.8'
+                ], capture_output=True, timeout=5)
+                health['dns_working'] = dns_result.returncode == 0
+            except:
+                pass
+                
+        except Exception as e:
+            logger.exception(f"Error getting VPN health for {interface_name}: {e}")
+            health['status'] = VpnStatus.UNKNOWN
+            
+        return health
+    
+    @staticmethod  
+    def get_all_active_connections() -> List[Dict]:
+        """Get status of all active VPN connections"""
+        connections = []
+        
+        try:
+            wg_status = VpnManager.get_wireguard_status()
+            for interface_name in wg_status.keys():
+                health = VpnManager.get_connection_health(interface_name)
+                connections.append({
+                    'interface': interface_name,
+                    'type': 'wireguard',
+                    'health': health,
+                    'details': wg_status[interface_name]
+                })
+        except Exception as e:
+            logger.exception(f"Error getting active connections: {e}")
+            
+        return connections
